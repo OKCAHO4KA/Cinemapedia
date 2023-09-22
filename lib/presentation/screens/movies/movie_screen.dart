@@ -1,6 +1,5 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:cinemapedia/domain/entities/movie.dart';
-import 'package:cinemapedia/presentation/providers/movies/movie_info_provider.dart';
 import 'package:cinemapedia/presentation/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -172,25 +171,40 @@ class _ActorsByMovie extends ConsumerWidget {
   }
 }
 
-class _CustomSliverAppBar extends StatelessWidget {
+final isFavoriteProvider =
+    FutureProvider.family.autoDispose((ref, int movieId) {
+  final localStoryRepository = ref.watch(localStorageRepositoryProvider);
+  return localStoryRepository.isMovieFavorite(movieId);
+});
+
+class _CustomSliverAppBar extends ConsumerWidget {
   final Movie movie;
 
   const _CustomSliverAppBar({required this.movie});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, ref) {
+    final isFavoriteFuture = ref.watch(isFavoriteProvider(movie.id));
     final size = MediaQuery.sizeOf(context);
     return SliverAppBar(
       actions: [
         IconButton(
-            onPressed: () {},
-            icon: const
-
-                //  Icon(Icons.favorite_border))
-                Icon(
-              Icons.favorite_rounded,
-              color: Colors.red,
-            ))
+          onPressed: () async {
+            await ref
+                .watch(localStorageRepositoryProvider)
+                .toggleFavorite(movie);
+            ref.invalidate(isFavoriteProvider(movie.id));
+          },
+          icon: isFavoriteFuture.when(
+              loading: () => const CircularProgressIndicator(),
+              data: (data) => data
+                  ? const Icon(
+                      Icons.favorite_rounded,
+                      color: Colors.red,
+                    )
+                  : const Icon(Icons.favorite_border_sharp),
+              error: (_, __) => throw UnimplementedError()),
+        )
       ],
       backgroundColor: Colors.black,
       expandedHeight: size.height * 0.7,
