@@ -1,6 +1,8 @@
 import 'package:cinemapedia/presentation/providers/providers.dart';
+import 'package:cinemapedia/presentation/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class FavoritesView extends ConsumerStatefulWidget {
   const FavoritesView({super.key});
@@ -10,29 +12,68 @@ class FavoritesView extends ConsumerStatefulWidget {
 }
 
 class FavoritesViewState extends ConsumerState<FavoritesView> {
+  bool isLastPage = false;
+  bool isLoading = false;
+  // ScrollController favoriteScrollCtr = ScrollController();
   @override
   void initState() {
     super.initState();
-//llamamos nuestro provider
-    ref.read(favoriteMoviesProvider.notifier).loadNextPage();
 
+//llamamos nuestro provider
+    // ref.read(favoriteMoviesProvider.notifier).loadNextPage();
+    loadNextPage();
     // если    ref.read(favoriteMoviesProvider).loadNextPage(); так напишем то нет доступа к notifier у провайдера что ниже класс
   }
+
+  void loadNextPage() async {
+    if (isLoading || isLastPage) return;
+    isLoading = true;
+    final movies =
+        await ref.read(favoriteMoviesProvider.notifier).loadNextPage();
+    isLoading = false;
+    if (movies.isEmpty) {
+      isLastPage = true;
+    }
+  }
+
+  // @override
+  // void dispose() {
+  //   favoriteScrollCtr.dispose();
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {
     final favoriteMovies = ref.watch(favoriteMoviesProvider).values.toList();
-    return favoriteMovies.isNotEmpty
-        ? Scaffold(
-            body: ListView.builder(
-              itemCount: favoriteMovies.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(favoriteMovies[index].title),
-                );
-              },
+
+    if (favoriteMovies.isEmpty) {
+      final colors = Theme.of(context).colorScheme;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.favorite_sharp,
+              size: 60,
+              color: colors.primary,
             ),
-          )
-        : const CircularProgressIndicator();
+            Text('Ohhh no!!!...',
+                style: TextStyle(fontSize: 30, color: colors.primary)),
+            const Text('No tienes películas favoritas',
+                style: TextStyle(fontSize: 20, color: Colors.black45)),
+            const SizedBox(
+              height: 20,
+            ),
+            FilledButton.tonal(
+                onPressed: () => context.go('/home/0'),
+                child: const Text('Añade tus películas favoritas'))
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+        body: MovieMasonry(loadNextPage: loadNextPage, movies: favoriteMovies));
   }
 }
